@@ -45,11 +45,6 @@
                     <mainClass>com.normaliser.NormaliserCli</mainClass>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-wrapper-plugin</artifactId>
-                <version>3.3.4</version>
-            </plugin>
         </plugins>
     </build>
 </project>

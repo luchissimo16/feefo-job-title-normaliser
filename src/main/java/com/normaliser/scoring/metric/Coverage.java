@@ -12,6 +12,8 @@ public final class Coverage implements Scorer {
 
     @Override
     public double score(String input, String candidate) {
+        requireNonNull(input, "input");
+        requireNonNull(candidate, "candidate");
         return score(TitleTokens.of(input), TitleTokens.of(candidate));
     }
 
@@ -28,5 +30,11 @@ public final class Coverage implements Scorer {
         }
         int smaller = Math.min(left.size(), right.size());
         return (double) intersection / smaller;
+    }
+
+    private static void requireNonNull(String value, String name) {
+        if (value == null) {
+            throw new IllegalArgumentException(name + " must not be null");
+        }
     }
 }

@@ -12,6 +12,8 @@ public final class Jaccard implements Scorer {
 
     @Override
     public double score(String input, String candidate) {
+        requireNonNull(input, "input");
+        requireNonNull(candidate, "candidate");
         return score(TitleTokens.of(input), TitleTokens.of(candidate));
     }
 
@@ -30,6 +32,12 @@ public final class Jaccard implements Scorer {
             }
         }
         int union = left.size() + right.size() - intersection;
-        return union == 0 ? 0.0 : (double) intersection / union;
+        return (double) intersection / union;
+    }
+
+    private static void requireNonNull(String value, String name) {
+        if (value == null) {
+            throw new IllegalArgumentException(name + " must not be null");
+        }
     }
 }

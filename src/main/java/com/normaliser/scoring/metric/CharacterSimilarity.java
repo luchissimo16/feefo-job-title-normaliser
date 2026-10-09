@@ -11,6 +11,12 @@ public final class CharacterSimilarity implements Scorer {
 
     @Override
     public double score(String input, String candidate) {
+        if (input == null) {
+            throw new IllegalArgumentException("input must not be null");
+        }
+        if (candidate == null) {
+            throw new IllegalArgumentException("candidate must not be null");
+        }
         int maxLength = Math.max(input.length(), candidate.length());
         if (maxLength == 0) {
             return 1.0;
@@ -21,6 +27,12 @@ public final class CharacterSimilarity implements Scorer {
 
     /** Counts insert/delete/replace edits needed to change one string into the other. */
     public static int levenshteinDistance(String left, String right) {
+        if (left == null) {
+            throw new IllegalArgumentException("left must not be null");
+        }
+        if (right == null) {
+            throw new IllegalArgumentException("right must not be null");
+        }
         int leftLength = left.length();
         int rightLength = right.length();
 

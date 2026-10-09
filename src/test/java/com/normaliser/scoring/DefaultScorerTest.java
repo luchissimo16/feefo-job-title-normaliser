@@ -41,12 +41,12 @@ class DefaultScorerTest {
 
     @Test
     void score_shouldRejectNullInput() {
-        assertThrows(NullPointerException.class, () -> scorer.score(null, "accountant"));
+        assertThrows(IllegalArgumentException.class, () -> scorer.score(null, "accountant"));
     }
 
     @Test
     void score_shouldRejectNullCandidate() {
-        assertThrows(NullPointerException.class, () -> scorer.score("accountant", null));
+        assertThrows(IllegalArgumentException.class, () -> scorer.score("accountant", null));
     }
 
     @Test

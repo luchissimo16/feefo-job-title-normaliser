@@ -48,8 +48,12 @@ public final class DefaultScorer implements Scorer {
 
     @Override
     public double score(String input, String candidate) {
-        Objects.requireNonNull(input, "input must not be null");
-        Objects.requireNonNull(candidate, "candidate must not be null");
+        if (input == null) {
+            throw new IllegalArgumentException("input must not be null");
+        }
+        if (candidate == null) {
+            throw new IllegalArgumentException("candidate must not be null");
+        }
 
         if (input.equals(candidate)) {
             return 1.0;

@@ -1,6 +1,5 @@
 package com.normaliser.scoring.metric;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -10,9 +9,19 @@ final class TitleTokens {
     private TitleTokens() {}
 
     static Set<String> of(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("value must not be null");
+        }
         if (value.isEmpty()) {
             return Set.of();
         }
-        return new HashSet<>(Arrays.asList(value.split(" ")));
+
+        Set<String> tokens = new HashSet<>();
+        for (String token : value.split(" ")) {
+            if (!token.isEmpty()) {
+                tokens.add(token);
+            }
+        }
+        return tokens;
     }
 }

@@ -72,11 +72,12 @@ there are no special-case mappings for “Java” or “C#”.
 
 ## Assumptions
 
-- **Low-confidence matches:** with the default `minimumQuality` of `0.0`, the
+- **Low-confidence matches:** with the default `minimumScore` of `0.0`, the
   best-scoring title is always returned, even for weak inputs. Callers can raise
   the floor in code, e.g. `new Normaliser(0.5)` or
   `new Normaliser(titles, scorer, 0.5)`, to reject weak matches
-  (`NoSuitableMatchException`).
+  (`NoSuitableMatchException`). Use `normaliseWithScore` when you also need the
+  similarity score (`NormalisationResult.score()`).
 - **Ties:** if two titles share the same top score, the first one in the list
   wins.
 - **Invalid input:** `null`, blank strings, and titles with no meaningful

@@ -66,22 +66,22 @@ class NormaliserAccuracyTest {
         "Sales rep, Sales representative"
     })
     void normalise_shouldMatchExpectedCanonicalTitle(String input, String expected) {
-        NormalisationResult result = normaliser.normaliseWithQuality(input);
+        NormalisationResult result = normaliser.normaliseWithScore(input);
 
         assertEquals(
                 expected,
                 result.title(),
-                () -> "input '" + input + "' scored q=" + result.quality());
-        assertTrue(result.quality() > 0.0, "expected positive quality for '" + input + "'");
+                () -> "input '" + input + "' scored " + result.score());
+        assertTrue(result.score() > 0.0, "expected positive score for '" + input + "'");
     }
 
     @Test
     void normalise_shouldPreferRelatedTitleOverUnrelatedTitle() {
-        NormalisationResult product = normaliser.normaliseWithQuality("Senior product manager");
-        NormalisationResult sales = normaliser.normaliseWithQuality("Enterprise sales representative");
+        NormalisationResult product = normaliser.normaliseWithScore("Senior product manager");
+        NormalisationResult sales = normaliser.normaliseWithScore("Enterprise sales representative");
 
         assertEquals("Product manager", product.title());
         assertEquals("Sales representative", sales.title());
-        assertTrue(product.quality() > sales.quality() * 0.5);
+        assertTrue(product.score() > sales.score() * 0.5);
     }
 }

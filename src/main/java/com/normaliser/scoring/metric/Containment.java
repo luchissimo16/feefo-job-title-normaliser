@@ -11,6 +11,12 @@ public final class Containment implements Scorer {
 
     @Override
     public double score(String input, String candidate) {
+        if (input == null) {
+            throw new IllegalArgumentException("input must not be null");
+        }
+        if (candidate == null) {
+            throw new IllegalArgumentException("candidate must not be null");
+        }
         return input.contains(candidate) || candidate.contains(input) ? 1.0 : 0.0;
     }
 }

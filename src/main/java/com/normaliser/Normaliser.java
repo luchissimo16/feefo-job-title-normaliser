@@ -14,7 +14,7 @@ import java.util.Objects;
  * Finds the closest canonical job title for a free-form input string.
  *
  * <p>Uses a {@link Scorer} score from 0.0 to 1.0. By default the best match is always returned; set
- * {@code minimumQuality} to reject weak matches.
+ * {@code minimumScore} to reject weak matches.
  *
  * <p>{@code new Normaliser()} loads titles from {@code canonical-titles.txt}. You can also pass
  * your own title list. Titles are checked and prepared once when the normaliser is created.
@@ -24,10 +24,10 @@ public final class Normaliser {
     private final List<CanonicalTitle> canonicalTitles;
     private final TitleNormaliser titleNormaliser;
     private final Scorer scorer;
-    private final double minimumQuality;
+    private final double minimumScore;
 
     /**
-     * Loads the default titles from the classpath with no quality floor.
+     * Loads the default titles from the classpath with no score floor.
      *
      * @throws UncheckedIOException if the titles file cannot be read
      */
@@ -36,29 +36,29 @@ public final class Normaliser {
     }
 
     /**
-     * Loads the default titles from the classpath with a quality floor.
+     * Loads the default titles from the classpath with a score floor.
      *
-     * @param minimumQuality minimum score required to accept a match ({@code 0.0}–{@code 1.0})
+     * @param minimumScore minimum score required to accept a match ({@code 0.0}–{@code 1.0})
      * @throws UncheckedIOException if the titles file cannot be read
      */
-    public Normaliser(double minimumQuality) {
-        this(loadDefaultCanonicalTitles(), new DefaultScorer(), minimumQuality);
+    public Normaliser(double minimumScore) {
+        this(loadDefaultCanonicalTitles(), new DefaultScorer(), minimumScore);
     }
 
-    /** Uses the given titles, default scorer, and no quality floor. */
+    /** Uses the given titles, default scorer, and no score floor. */
     public Normaliser(Collection<String> canonicalTitles) {
         this(canonicalTitles, new DefaultScorer(), 0.0);
     }
 
-    /** Uses the given titles and scorer, with no quality floor. */
+    /** Uses the given titles and scorer, with no score floor. */
     public Normaliser(Collection<String> canonicalTitles, Scorer scorer) {
         this(canonicalTitles, scorer, 0.0);
     }
 
-    /** Uses the given titles, scorer, and quality floor. */
+    /** Uses the given titles, scorer, and score floor. */
     public Normaliser(
-            Collection<String> canonicalTitles, Scorer scorer, double minimumQuality) {
-        this(canonicalTitles, new TitleNormaliser(), scorer, minimumQuality);
+            Collection<String> canonicalTitles, Scorer scorer, double minimumScore) {
+        this(canonicalTitles, new TitleNormaliser(), scorer, minimumScore);
     }
 
     /** Full wiring used by all public constructors. */
@@ -66,7 +66,7 @@ public final class Normaliser {
             Collection<String> canonicalTitles,
             TitleNormaliser titleNormaliser,
             Scorer scorer,
-            double minimumQuality) {
+            double minimumScore) {
         Objects.requireNonNull(canonicalTitles, "canonicalTitles must not be null");
         Objects.requireNonNull(titleNormaliser, "titleNormaliser must not be null");
         Objects.requireNonNull(scorer, "scorer must not be null");
@@ -74,16 +74,16 @@ public final class Normaliser {
         if (canonicalTitles.isEmpty()) {
             throw new IllegalArgumentException("canonicalTitles must not be empty");
         }
-        if (Double.isNaN(minimumQuality) || minimumQuality < 0.0 || minimumQuality > 1.0) {
+        if (Double.isNaN(minimumScore) || minimumScore < 0.0 || minimumScore > 1.0) {
             throw new IllegalArgumentException(
-                    "minimumQuality must be between 0.0 and 1.0 inclusive, but was: "
-                            + minimumQuality);
+                    "minimumScore must be between 0.0 and 1.0 inclusive, but was: "
+                            + minimumScore);
         }
 
         this.canonicalTitles = List.copyOf(prepareCanonicalTitles(canonicalTitles, titleNormaliser));
         this.titleNormaliser = titleNormaliser;
         this.scorer = scorer;
-        this.minimumQuality = minimumQuality;
+        this.minimumScore = minimumScore;
     }
 
     /**
@@ -92,19 +92,19 @@ public final class Normaliser {
      * @param jobTitle the job title to normalise
      * @return the best-matching canonical title as stored in the list
      * @throws IllegalArgumentException if {@code jobTitle} is null or blank
-     * @throws NoSuitableMatchException if the best score is below {@code minimumQuality}
+     * @throws NoSuitableMatchException if the best score is below {@code minimumScore}
      */
     public String normalise(String jobTitle) {
-        return normaliseWithQuality(jobTitle).title();
+        return normaliseWithScore(jobTitle).title();
     }
 
     /**
      * Like {@link #normalise(String)}, but also returns the similarity score.
      *
      * @throws IllegalArgumentException if {@code jobTitle} is null or blank
-     * @throws NoSuitableMatchException if the best score is below {@code minimumQuality}
+     * @throws NoSuitableMatchException if the best score is below {@code minimumScore}
      */
-    public NormalisationResult normaliseWithQuality(String jobTitle) {
+    public NormalisationResult normaliseWithScore(String jobTitle) {
         if (jobTitle == null) {
             throw new IllegalArgumentException("jobTitle must not be null");
         }
@@ -120,17 +120,17 @@ public final class Normaliser {
 
         NormalisationResult best = null;
         for (CanonicalTitle candidate : canonicalTitles) {
-            double quality = scorer.score(preparedInput, candidate.comparisonForm());
-            if (best == null || quality > best.quality()) {
-                best = new NormalisationResult(candidate.displayForm(), quality);
+            double score = scorer.score(preparedInput, candidate.comparisonForm());
+            if (best == null || score > best.score()) {
+                best = new NormalisationResult(candidate.displayForm(), score);
             }
         }
 
         Objects.requireNonNull(best, "canonicalTitles must yield at least one candidate");
 
-        if (best.quality() < minimumQuality) {
+        if (best.score() < minimumScore) {
             throw new NoSuitableMatchException(
-                    jobTitle, best.title(), best.quality(), minimumQuality);
+                    jobTitle, best.title(), best.score(), minimumScore);
         }
 
         return best;

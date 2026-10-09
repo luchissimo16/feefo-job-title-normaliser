@@ -5,9 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.normaliser.scoring.DefaultScorer;
+import com.normaliser.scoring.Scorer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 
@@ -43,82 +48,52 @@ class NormaliserTest {
         assertEquals("Accountant", n.normalise("Chief Accountant"));
     }
 
-    @Test
-    void normalise_shouldReturnSoftwareEngineer_whenInputIsJavaEngineer() {
-        assertEquals("Software engineer", normaliser.normalise("Java engineer"));
+    @ParameterizedTest(name = "{0} -> {1}")
+    @CsvSource({
+        "Java engineer, Software engineer",
+        "C# engineer, Software engineer",
+        "Accountant, Accountant",
+        "Chief Accountant, Accountant",
+        "Senior product manager, Product manager",
+        "Lead data scientist, Data scientist",
+        "Junior business analyst, Business analyst",
+        "Quantity surveyor, Quantity surveyor",
+        "Architect, Architect",
+        "Product manager, Product manager",
+        "Data scientist, Data scientist",
+        "Business analyst, Business analyst"
+    })
+    void normalise_shouldMatchExpectedCanonicalTitle(String input, String expected) {
+        assertEquals(expected, normaliser.normalise(input));
     }
 
-    @Test
-    void normalise_shouldReturnSoftwareEngineer_whenInputIsCsharpEngineer() {
-        assertEquals("Software engineer", normaliser.normalise("C# engineer"));
+    // Preprocessing and validation edge cases (parameterised)
+
+    @ParameterizedTest(name = "[{0}] -> {1}")
+    @CsvSource({
+        "' JAVA ENGINEER ', Software engineer",
+        "'  Java engineer  ', Software engineer",
+        "'Chief   Accountant', Accountant",
+        "java engineer, Software engineer",
+        "CHIEF ACCOUNTANT, Accountant"
+    })
+    void normalise_shouldHandleMixedCaseAndWhitespace(String input, String expected) {
+        assertEquals(expected, normaliser.normalise(input));
     }
 
-    @Test
-    void normalise_shouldReturnAccountant_whenInputIsAccountant() {
-        assertEquals("Accountant", normaliser.normalise("Accountant"));
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   ", "\t", "\n"})
+    void normalise_shouldRejectNullOrBlankInput(String input) {
+        assertThrows(IllegalArgumentException.class, () -> normaliser.normalise(input));
     }
 
-    @Test
-    void normalise_shouldReturnAccountant_whenInputIsChiefAccountant() {
-        assertEquals("Accountant", normaliser.normalise("Chief Accountant"));
-    }
-
-    // Preprocessing (case / whitespace)
-
-    @Test
-    void normalise_shouldIgnoreCase() {
-        assertEquals("Software engineer", normaliser.normalise(" JAVA ENGINEER "));
-    }
-
-    @Test
-    void normalise_shouldIgnoreSurroundingWhitespace() {
-        assertEquals("Software engineer", normaliser.normalise("  Java engineer  "));
-    }
-
-    @Test
-    void normalise_shouldCollapseInternalWhitespace() {
-        assertEquals("Accountant", normaliser.normalise("Chief   Accountant"));
-    }
-
-    @Test
-    void normalise_shouldReturnExactCanonicalForm_whenExactMatch() {
-        assertEquals("Quantity surveyor", normaliser.normalise("Quantity surveyor"));
-        assertEquals("Architect", normaliser.normalise("Architect"));
-        assertEquals("Product manager", normaliser.normalise("Product manager"));
-        assertEquals("Data scientist", normaliser.normalise("Data scientist"));
-        assertEquals("Business analyst", normaliser.normalise("Business analyst"));
-    }
-
-    @Test
-    void normalise_shouldReturnProductManager_whenInputIsSeniorProductManager() {
-        assertEquals("Product manager", normaliser.normalise("Senior product manager"));
-    }
-
-    @Test
-    void normalise_shouldReturnDataScientist_whenInputIsLeadDataScientist() {
-        assertEquals("Data scientist", normaliser.normalise("Lead data scientist"));
-    }
-
-    @Test
-    void normalise_shouldReturnBusinessAnalyst_whenInputIsJuniorBusinessAnalyst() {
-        assertEquals("Business analyst", normaliser.normalise("Junior business analyst"));
-    }
-
-    // Input validation and quality threshold
-
-    @Test
-    void normalise_shouldRejectNullInput() {
-        assertThrows(IllegalArgumentException.class, () -> normaliser.normalise(null));
-    }
-
-    @Test
-    void normalise_shouldRejectBlankInput() {
-        assertThrows(IllegalArgumentException.class, () -> normaliser.normalise("   "));
-    }
-
-    @Test
-    void normalise_shouldRejectEmptyInput() {
-        assertThrows(IllegalArgumentException.class, () -> normaliser.normalise(""));
+    @ParameterizedTest
+    @ValueSource(strings = {"----", "...", "!!!", "--- ---"})
+    void normalise_shouldRejectPunctuationOnlyInput(String input) {
+        IllegalArgumentException ex =
+                assertThrows(IllegalArgumentException.class, () -> normaliser.normalise(input));
+        assertTrue(ex.getMessage().contains("meaningful"));
     }
 
     @Test
@@ -129,24 +104,77 @@ class NormaliserTest {
     }
 
     @Test
-    void normalise_shouldRejectWhenBelowMinimumQuality() {
+    void normalise_shouldRejectWhenBelowMinimumScore() {
         Normaliser strict = new Normaliser(ASSESSMENT_TITLES, new DefaultScorer(), 0.95);
 
         NoSuitableMatchException ex =
                 assertThrows(NoSuitableMatchException.class, () -> strict.normalise("Chef"));
 
         assertEquals("Chef", ex.input());
-        assertEquals(0.95, ex.minimumQuality());
-        assertTrue(ex.bestQuality() < 0.95);
+        assertEquals(0.95, ex.minimumScore());
+        assertTrue(ex.bestScore() < 0.95);
         assertTrue(ex.bestTitle() != null && !ex.bestTitle().isBlank());
     }
 
     @Test
-    void normaliseWithQuality_shouldExposeScoreForExactMatch() {
-        NormalisationResult result = normaliser.normaliseWithQuality("Accountant");
+    void normalise_shouldReturnBestMatchWhenMinimumScoreIsZero() {
+        Normaliser permissive = new Normaliser(ASSESSMENT_TITLES, new DefaultScorer(), 0.0);
+
+        NormalisationResult result = permissive.normaliseWithScore("Chef");
+
+        assertTrue(result.title() != null && !result.title().isBlank());
+        assertTrue(result.score() >= 0.0);
+    }
+
+    @Test
+    void normaliseWithScore_shouldExposeScoreForExactMatch() {
+        NormalisationResult result = normaliser.normaliseWithScore("Accountant");
 
         assertEquals("Accountant", result.title());
-        assertEquals(1.0, result.quality());
+        assertEquals(1.0, result.score());
+    }
+
+    // Tiebreak and selection via stub Scorer (programmed to interface)
+
+    @Test
+    void normalise_shouldKeepFirstTitleWhenScoresAreTied() {
+        Scorer stub =
+                (input, candidate) ->
+                        switch (candidate) {
+                            case "alpha", "beta" -> 0.8;
+                            default -> 0.0;
+                        };
+
+        Normaliser custom = new Normaliser(List.of("Alpha", "Beta"), stub);
+
+        assertEquals("Alpha", custom.normalise("anything"));
+    }
+
+    @Test
+    void normalise_shouldReplaceWhenLaterCandidateScoresHigher() {
+        Scorer stub =
+                (input, candidate) ->
+                        switch (candidate) {
+                            case "alpha" -> 0.5;
+                            case "beta" -> 0.9;
+                            default -> 0.0;
+                        };
+
+        Normaliser custom = new Normaliser(List.of("Alpha", "Beta"), stub);
+
+        assertEquals("Beta", custom.normalise("anything"));
+    }
+
+    @Test
+    void normalise_shouldRejectWhenStubScoreIsBelowMinimum() {
+        Scorer stub = (input, candidate) -> 0.4;
+        Normaliser custom = new Normaliser(List.of("Alpha", "Beta"), stub, 0.5);
+
+        NoSuitableMatchException ex =
+                assertThrows(NoSuitableMatchException.class, () -> custom.normalise("weak"));
+
+        assertEquals(0.4, ex.bestScore());
+        assertEquals(0.5, ex.minimumScore());
     }
 
     // Construction and NormalisationResult
@@ -173,7 +201,7 @@ class NormaliserTest {
     }
 
     @Test
-    void constructor_shouldRejectInvalidMinimumQuality() {
+    void constructor_shouldRejectInvalidMinimumScore() {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> new Normaliser(List.of("Architect"), new DefaultScorer(), 1.5));
@@ -190,17 +218,13 @@ class NormaliserTest {
     }
 
     @Test
-    void matchResult_shouldRejectInvalidQuality() {
+    void matchResult_shouldRejectInvalidScore() {
         assertThrows(IllegalArgumentException.class, () -> new NormalisationResult("Architect", 1.1));
     }
 
     @Test
-    void normalise_shouldPreferHighestScoreDeterministically() {
-        NormalisationResult javaEngineer = normaliser.normaliseWithQuality("Java engineer");
-        NormalisationResult accountant = normaliser.normaliseWithQuality("Java engineer");
-
-        assertEquals(javaEngineer, accountant);
-        assertTrue(javaEngineer.quality() > 0.0);
-        assertEquals("Software engineer", javaEngineer.title());
+    void matchResult_shouldRejectNullOrBlankTitle() {
+        assertThrows(IllegalArgumentException.class, () -> new NormalisationResult(null, 0.5));
+        assertThrows(IllegalArgumentException.class, () -> new NormalisationResult("  ", 0.5));
     }
 }
